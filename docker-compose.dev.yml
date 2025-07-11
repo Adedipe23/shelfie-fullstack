@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # HAProxy Load Balancer / Reverse Proxy
+  proxy:
+    build:
+      context: ./haproxy
+      dockerfile: Dockerfile
+    container_name: isms-proxy
+    ports:
+      - "80:80"      # Main application access
+      - "8404:8404"  # HAProxy stats page
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Service (Vite + React)
+  frontend:
+    build:
+      context: ./new-isms-frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: isms-frontend
+    ports:
+      - "3000:3000"  # Direct access for debugging
+      - "3001:3001"  # HMR WebSocket
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost/api/v1
+      - CHOKIDAR_USEPOLLING=true  # For file watching in Docker
+    volumes:
+      - ./new-isms-frontend:/app
+      - /app/node_modules  # Anonymous volume for node_modules
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - backend
+
+  # Backend Service (FastAPI + Python)
+  backend:
+    build:
+      context: ./isms-backend
+      dockerfile: Dockerfile.dev
+    container_name: isms-backend
+    ports:
+      - "8000:8000"  # Direct access for debugging
+      - "5678:5678"  # Python debugger port
+    environment:
+      - ENV_MODE=development
+      - DATABASE_URL=sqlite:///./isms.db
+      - BACKEND_CORS_ORIGINS=["http://localhost", "http://localhost:3000", "http://localhost:80"]
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - RATE_LIMIT_REQUESTS=1000
+      - RATE_LIMIT_WINDOW=60
+    volumes:
+      - ./isms-backend:/app
+      - backend-data:/app/data
+      - backend-logs:/app/logs
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database (Optional - for future PostgreSQL migration)
+  # Uncomment if you want to use PostgreSQL instead of SQLite
+  # database:
+  #   image: postgres:15-alpine
+  #   container_name: isms-database
+  #   environment:
+  #     - POSTGRES_DB=isms
+  #     - POSTGRES_USER=isms_user
+  #     - POSTGRES_PASSWORD=isms_password
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - isms-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U isms_user -d isms"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+networks:
+  isms-network:
+    driver: bridge
+    name: isms-dev-network
+
+volumes:
+  backend-data:
+    name: isms-backend-data
+  backend-logs:
+    name: isms-backend-logs
+  # postgres-data:
+  #   name: isms-postgres-data

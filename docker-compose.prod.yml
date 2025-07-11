@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # HAProxy Load Balancer / Reverse Proxy
+  proxy:
+    build:
+      context: ./haproxy
+      dockerfile: Dockerfile
+    container_name: isms-proxy-prod
+    ports:
+      - "80:80"
+      - "443:443"   # HTTPS (configure SSL certificates as needed)
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Service (Nginx + Static Files)
+  frontend:
+    build:
+      context: ./new-isms-frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: isms-frontend-prod
+    environment:
+      - NODE_ENV=production
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend Service (FastAPI + Gunicorn)
+  backend:
+    build:
+      context: ./isms-backend
+      dockerfile: Dockerfile
+    container_name: isms-backend-prod
+    environment:
+      - ENV_MODE=production
+      - DATABASE_URL=sqlite:///./data/isms.db
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - RATE_LIMIT_REQUESTS=100
+      - RATE_LIMIT_WINDOW=60
+    volumes:
+      - backend-data:/app/data
+      - backend-logs:/app/logs
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  isms-network:
+    driver: bridge
+    name: isms-prod-network
+
+volumes:
+  backend-data:
+    name: isms-backend-data-prod
+  backend-logs:
+    name: isms-backend-logs-prod

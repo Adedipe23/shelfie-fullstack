@@ -1,16 +1,14 @@
 {
-  "name": "ISMS Development Environment",
+  "name": "ISMS Standalone Development Environment",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:20-bullseye",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-  "shutdownAction": "none",
-
+  
   "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.12"
     }
   },
-
+  
   "forwardPorts": [3000, 8000],
   "portsAttributes": {
     "3000": {
@@ -44,8 +42,7 @@
     }
   },
   
-  "postCreateCommand": "cd new-isms-frontend && npm install",
-  "postStartCommand": "bash scripts/codespaces-simple-start.sh",
-
+  "postCreateCommand": "bash scripts/codespaces-standalone-setup.sh",
+  
   "remoteUser": "vscode"
 }

@@ -4,17 +4,32 @@ This guide explains how to deploy the ISMS application in GitHub Codespaces with
 
 ## 🚀 Quick Start
 
-### Option 1: Automatic Setup (Recommended)
-1. Open this repository in GitHub Codespaces
-2. The application will automatically start using the `.devcontainer` configuration
-3. Wait for the setup to complete (2-3 minutes)
-4. Access the application via the forwarded ports
-
-### Option 2: Manual Setup
+### Option 1: Docker Compose (Recommended)
 1. Open this repository in GitHub Codespaces
 2. Run the Codespaces startup script:
    ```bash
-   ./scripts/codespaces-start.sh
+   ./scripts/codespaces-simple-start.sh
+   ```
+3. Wait for the setup to complete (2-3 minutes)
+4. Access the application via the forwarded ports
+
+### Option 2: Standalone Mode (Alternative)
+If you encounter Docker-in-Docker issues, use standalone mode:
+1. Open this repository in GitHub Codespaces
+2. Run the standalone setup:
+   ```bash
+   ./scripts/codespaces-standalone-setup.sh
+   ```
+3. Start the application:
+   ```bash
+   ./scripts/start-codespaces-standalone.sh
+   ```
+
+### Option 3: Manual Docker Compose
+1. Open this repository in GitHub Codespaces
+2. Run the Docker Compose manually:
+   ```bash
+   docker compose -f docker-compose.codespaces.yml up -d --build
    ```
 
 ## 🏗️ Architecture Changes for Codespaces
@@ -102,6 +117,28 @@ docker exec isms-backend python manage.py reset-db
 ```
 
 ## 🔍 Troubleshooting
+
+### Docker-in-Docker Issues
+If you encounter the error `env: can't execute 'bash': No such file or directory`:
+
+**Problem**: The Alpine-based Node.js image doesn't have `bash` required by Docker-in-Docker feature.
+
+**Solutions**:
+1. **Use Standalone Mode** (Recommended):
+   ```bash
+   ./scripts/codespaces-standalone-setup.sh
+   ./scripts/start-codespaces-standalone.sh
+   ```
+
+2. **Use Docker Outside of Docker**:
+   ```bash
+   ./scripts/codespaces-simple-start.sh
+   ```
+
+3. **Manual Docker Compose**:
+   ```bash
+   docker compose -f docker-compose.codespaces.yml up -d --build
+   ```
 
 ### CORS Issues
 If you encounter CORS issues:

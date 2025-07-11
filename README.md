@@ -21,11 +21,18 @@ This application has been transformed from a Tauri desktop application to a cont
 
 ### Development Environment
 
+#### Local Development
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
    cd shelfi-dockerized
    ```
+
+#### GitHub Codespaces (Recommended for Cloud Development)
+1. **Open in Codespaces**
+   - Click "Code" → "Codespaces" → "Create codespace"
+   - The application will automatically start with optimized container networking
+   - See [CODESPACES.md](./CODESPACES.md) for detailed instructions
 
 2. **Start the development environment**
    ```bash

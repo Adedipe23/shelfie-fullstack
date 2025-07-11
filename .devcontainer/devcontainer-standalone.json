@@ -43,6 +43,6 @@
   },
   
   "postCreateCommand": "bash scripts/codespaces-standalone-setup.sh",
-  
-  "remoteUser": "vscode"
+
+  "remoteUser": "node"
 }

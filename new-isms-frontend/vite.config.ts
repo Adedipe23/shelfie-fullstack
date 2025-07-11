@@ -14,13 +14,15 @@ export default defineConfig({
       port: 3001,
     },
     // Proxy API requests to backend during development
-    proxy: {
+    // Note: In containerized environments, direct API calls are preferred over proxy
+    proxy: process.env.VITE_USE_PROXY === 'true' ? {
       '/api': {
         target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
-    },
+    } : {},
   },
 
   // Build configuration

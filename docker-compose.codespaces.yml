@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # Frontend Service (Vite + React) - Internal networking
+  frontend:
+    build:
+      context: ./new-isms-frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: isms-frontend
+    ports:
+      - "3000:3000"  # Codespaces port forwarding
+      - "3001:3001"  # HMR WebSocket
+    env_file:
+      - .env.codespaces
+    environment:
+      # Use internal container networking for API calls
+      - VITE_API_BASE_URL=http://backend:8000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./new-isms-frontend:/app
+      - /app/node_modules  # Anonymous volume for node_modules
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - backend
+
+  # Backend Service (FastAPI + Python)
+  backend:
+    build:
+      context: ./isms-backend
+      dockerfile: Dockerfile.dev
+    container_name: isms-backend
+    ports:
+      - "8000:8000"  # Codespaces port forwarding
+      - "5678:5678"  # Python debugger port
+    env_file:
+      - .env.codespaces
+    environment:
+      # CORS settings for container networking
+      - BACKEND_CORS_ORIGINS=["http://localhost", "http://localhost:3000", "http://frontend:3000", "http://isms-frontend:3000", "*"]
+    volumes:
+      - ./isms-backend:/app
+      - backend-data:/app/data
+      - backend-logs:/app/logs
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: HAProxy for external access (can be disabled for pure internal networking)
+  proxy:
+    build:
+      context: ./haproxy
+      dockerfile: Dockerfile
+    container_name: isms-proxy
+    ports:
+      - "80:80"      # Main application access
+      - "8404:8404"  # HAProxy stats page
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - isms-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - proxy  # Use profile to optionally enable/disable
+
+networks:
+  isms-network:
+    driver: bridge
+    name: isms-codespaces-network
+
+volumes:
+  backend-data:
+    name: isms-codespaces-backend-data
+  backend-logs:
+    name: isms-codespaces-backend-logs
